@@ -1,0 +1,49 @@
+# create the Dynamodb DQ Rules table
+aws dynamodb create-table \
+    --table-name ctrl_data_quality_rules_tbl \
+    --attribute-definitions \
+        AttributeName=id,AttributeType=S \
+    --key-schema \
+        AttributeName=id,KeyType=HASH \
+    --provisioned-throughput \
+        ReadCapacityUnits=5,WriteCapacityUnits=5
+
+# create an items.json file with the DQ records. For e.g.
+{
+    "items": [
+        {
+            "id": {"S": "1"},
+            "dq_column": {"S": "driverrating"},
+            "dq_id": {"S": "rule_1"},
+            "dq_level": {"S": "column"},
+            "dq_name": {"S": "check_valid_insuredzip"},
+            "dq_type": {"S": "accuracy"},
+            "name": {"S": "domaindb.policy"},
+            "query": {"S": "select * from (SELECT *,CASE WHEN length(insuredzip) > 4 THEN 'passed' ELSE 'fail' END AS result FROM domaindb.policy);"}
+        },
+        {
+            "id": {"S": "2"},
+            "dq_column": {"S": "insuredstatecode"},
+            "dq_id": {"S": "rule_2"},
+            "dq_level": {"S": "column"},
+            "dq_name": {"S": "check_valid_insuredstatecode"},
+            "dq_type": {"S": "accuracy"},
+            "name": {"S": "domaindb.policy"},
+            "query": {"S": "select * from (SELECT *,CASE WHEN length(insuredstatecode) = 2 THEN 'passed' ELSE 'fail' END AS result FROM domaindb.policy);"}
+        },
+        {
+            "id": {"S": "3"},
+            "dq_column": {"S": "driverrating"},
+            "dq_id": {"S": "rule_1"},
+            "dq_level": {"S": "column"},
+            "dq_name": {"S": "check_valid_driverrating"},
+            "dq_type": {"S": "accuracy"},
+            "name": {"S": "domaindb.claims"},
+            "query": {"S": "select * from (SELECT *,CASE WHEN driverrating BETWEEN 0 AND 3 THEN 'passed' ELSE 'fail' END AS result FROM domaindb.claims);"}
+        }
+    ]
+}
+
+# insert the records in Dynamodb table
+aws dynamodb batch-write-item \
+    --request-items file://items.json
